@@ -1,4 +1,5 @@
 import asyncio
+import threading
 
 from aiogram import Bot
 from aiogram import Dispatcher
@@ -9,6 +10,8 @@ from database import (
     connect_db,
     create_tables
 )
+
+from webserver import run_web
 
 from handlers.start import router as start_router
 from handlers.matches import router as matches_router
@@ -36,4 +39,9 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+
+    threading.Thread(
+        target=run_web
+    ).start()
+
     asyncio.run(main())
