@@ -1,42 +1,37 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import Message
 
 from database import pool
 
 router = Router()
 
-@router.callback_query(F.data == "stats")
-async def stats_handler(callback: CallbackQuery):
+@router.message(F.text == "📈 Статистика")
+async def stats(message: Message):
 
     async with pool.acquire() as conn:
 
         rows = await conn.fetch("""
-            SELECT player_name, goals, assists, motm
+            SELECT player_name, goals, assists
             FROM players
             ORDER BY goals DESC
             LIMIT 10
         """)
 
     if not rows:
-
-        await callback.message.answer(
-            "📊 Пока нет статистики игроков!"
-        )
+        await message.answer("📊 Статистика пока пустая!")
         return
 
-    text = "📈 <b>Топ игроков MIFL</b>\n\n"
+    text = "📈 <b>Топ игроков</b>\n\n"
 
-    pos = 1
+    i = 1
 
     for r in rows:
 
         text += (
-            f"{pos}. {r['player_name']}\n"
-            f"⚽ Голы: {r['goals']}\n"
-            f"🎯 Ассисты: {r['assists']}\n"
-            f"🌟 MOTM: {r['motm']}\n\n"
+            f"{i}. {r['player_name']}\n"
+            f"⚽ {r['goals']} | 🎯 {r['assists']}\n\n"
         )
 
-        pos += 1
+        i += 1
 
-    await callback.message.answer(text)
+    await message.answer(text)
