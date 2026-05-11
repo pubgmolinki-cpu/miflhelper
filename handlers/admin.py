@@ -1,120 +1,127 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.types import Message
-from aiogram.filters import Command
-
-from config import ADMIN_ID
-
-from parser import parse_match
-
-from database import add_match
-
-from services.standings import (
-    update_standings
-)
-
-from services.player_parser import (
-    extract_goalscorers,
-    extract_assisters
-)
-
-from services.player_service import (
-    add_goal,
-    add_assist
-)
 
 router = Router()
 
-waiting_admin = {}
+# =========================
+# 🔐 АДМИН ID (ЗАМЕНИ СВОЙ)
+# =========================
+ADMIN_ID = 1866813859  # <-- вставь свой Telegram ID
 
-@router.message(Command("add"))
-async def add_sim(message: Message):
 
-    if message.from_user.id != ADMIN_ID:
+def is_admin(user_id: int) -> bool:
+    return user_id == ADMIN_ID
+
+
+# =========================
+# 📥 /upload команда
+# =========================
+@router.message(F.text.startswith("/upload"))
+async def upload_start(message: Message):
+
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Нет доступа")
         return
-
-    waiting_admin[
-        message.from_user.id
-    ] = True
 
     await message.answer(
-        "📥 Отправьте симуляцию матча."
+        "📄 Отправь файл симуляции матча"
     )
 
-@router.message()
-async def handle_sim(message: Message):
 
-    if message.from_user.id != ADMIN_ID:
+# =========================
+# 📄 ПРИЁМ ФАЙЛА
+# =========================
+@router.message(F.document)
+async def handle_simulation_file(message: Message):
+
+    if not is_admin(message.from_user.id):
         return
 
-    if message.from_user.id not in waiting_admin:
-        return
+    # получаем файл
+    file = await message.bot.get_file(message.document.file_id)
+    downloaded = await message.bot.download_file(file.file_path)
 
-    parsed = parse_match(
-        message.text
-    )
+    text = downloaded.read().decode("utf-8")
 
-    if not parsed:
+    await message.answer("⚙️ Обрабатываю симуляцию...")
 
-        await message.answer(
-            "❌ Ошибка парсинга!"
-        )
+    # =========================
+    # 🔥 ТУТ БУДЕТ ПАРСЕР
+    # =========================
+    await process_simulation(text)
 
-        return
+    await message.answer("✅ Симуляция успешно загружена!")
 
-    league = "MIFL"
-    tour = 1
 
-    await add_match(
+# =========================
+# 🧠 ПАРСЕР (ЗАГЛУШКА)
+# =========================
+async def process_simulation(text: str):
 
-        league=league,
-        tour=tour,
+    lines = text.split("\n")
 
-        home_team=parsed["home_team"],
-        away_team=parsed["away_team"],
+    league = None
+    tour = None
 
-        home_score=parsed["home_score"],
-        away_score=parsed["away_score"],
+    matches = []
 
-        raw_text=message.text
+    for line in lines:
 
-    )
+        line = line.strip()
 
-    await update_standings(
+        # лига
+        if "MIFL" in line or "Кубок" in line:
+            league = line
+            continue
 
-        league=league,
+        # тур
+        if "тур" in line.lower():
+            try:
+                tour = int(''.join(filter(str.isdigit, line)))
+            except:
+                tour = None
+            continue
 
-        home_team=parsed["home_team"],
-        away_team=parsed["away_team"],
+        # матч
+        if ":" in line:
 
-        home_score=parsed["home_score"],
-        away_score=parsed["away_score"]
+            parts = line.split()
 
-    )
+            score_index = None
 
-    scorers = extract_goalscorers(
-        message.text
-    )
+            for i, p in enumerate(parts):
+                if ":" in p:
+                    score_index = i
+                    break
 
-    for scorer in scorers:
+            if score_index is None:
+                continue
 
-        await add_goal(
-            scorer
-        )
+            teams = parts[:score_index]
+            score = parts[score_index]
 
-    assisters = extract_assisters(
-        message.text
-    )
+            if len(teams) < 2:
+                continue
 
-    for assist in assisters:
+            home_team = teams[0]
+            away_team = teams[-1]
 
-        await add_assist(
-            assist
-        )
+            try:
+                home_score, away_score = map(int, score.split(":"))
+            except:
+                continue
 
-    await message.answer(
-        "✅ Матч обработан!"
-    )
+            matches.append({
+                "league": league,
+                "tour": tour,
+                "home_team": home_team,
+                "away_team": away_team,
+                "home_score": home_score,
+                "away_score": away_score
+            })
 
-    del waiting_admin[
-        message.from_user.id
-    ]
+    # =========================
+    # 💾 ЗДЕСЬ БУДЕТ ЗАПИСЬ В БД
+    # =========================
+
+    print("PARSED MATCHES:", matches)
