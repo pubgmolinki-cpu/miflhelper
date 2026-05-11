@@ -6,16 +6,18 @@ from database import get_matches
 
 router = Router()
 
+
 @router.message(F.text == "⚽ Матчи")
-async def matches(message):
+async def show_leagues(message: Message):
 
     await message.answer(
         "Выберите лигу 👇",
         reply_markup=leagues_keyboard()
     )
 
+
 @router.callback_query(F.data.startswith("league_"))
-async def league(callback: CallbackQuery):
+async def league_handler(callback: CallbackQuery):
 
     league = callback.data.split("_")[1]
 
@@ -24,24 +26,28 @@ async def league(callback: CallbackQuery):
         reply_markup=tours_keyboard(league)
     )
 
+
 @router.callback_query(F.data.startswith("tour_"))
-async def tour(callback: CallbackQuery):
+async def tour_handler(callback: CallbackQuery):
 
-    data = callback.data.split("_")
+    parts = callback.data.split("_")
 
-    league = data[1]
-    tour = int(data[2])
+    league = parts[1]
+    tour = int(parts[2])
 
     matches = await get_matches(league, tour)
 
     if not matches:
+
         await callback.message.answer("⚠️ Тур ещё не заполнен!")
         return
 
-    text = f"🏆 Тур {tour}\n\n"
+    text = f"🏆 {league} | Тур {tour}\n\n"
 
     for m in matches:
 
-        text += f"{m['home_team']} {m['home_score']}:{m['away_score']} {m['away_team']}\n"
+        text += (
+            f"{m['home_team']} {m['home_score']}:{m['away_score']} {m['away_team']}\n"
+        )
 
     await callback.message.answer(text)
