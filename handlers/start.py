@@ -10,16 +10,12 @@ router = Router()
 async def start(message: Message):
 
     text = (
-
         "🔥 <b>Добро пожаловать в MIFL HELPER!</b>\n\n"
-
         "Здесь ты можешь:\n"
         "• смотреть матчи\n"
         "• смотреть таблицу\n"
         "• смотреть статистику\n\n"
-
         "Приятного использования 🔥"
-
     )
 
     await message.answer(
