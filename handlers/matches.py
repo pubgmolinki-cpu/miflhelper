@@ -1,25 +1,21 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from keyboards import (
-    leagues_keyboard,
-    tours_keyboard
-)
-
+from keyboards import leagues_keyboard, tours_keyboard
 from database import get_matches
 
 router = Router()
 
-@router.callback_query(F.data == "matches")
-async def matches_menu(callback: CallbackQuery):
+@router.message(F.text == "⚽ Матчи")
+async def matches(message):
 
-    await callback.message.edit_text(
+    await message.answer(
         "Выберите лигу 👇",
         reply_markup=leagues_keyboard()
     )
 
 @router.callback_query(F.data.startswith("league_"))
-async def tours(callback: CallbackQuery):
+async def league(callback: CallbackQuery):
 
     league = callback.data.split("_")[1]
 
@@ -29,34 +25,23 @@ async def tours(callback: CallbackQuery):
     )
 
 @router.callback_query(F.data.startswith("tour_"))
-async def show_tour(callback: CallbackQuery):
+async def tour(callback: CallbackQuery):
 
     data = callback.data.split("_")
 
     league = data[1]
     tour = int(data[2])
 
-    matches = await get_matches(
-        league,
-        tour
-    )
+    matches = await get_matches(league, tour)
 
     if not matches:
-
-        await callback.message.answer(
-            "⚠️ Тур пока пуст!"
-        )
-
+        await callback.message.answer("⚠️ Тур ещё не заполнен!")
         return
 
     text = f"🏆 Тур {tour}\n\n"
 
-    for match in matches:
+    for m in matches:
 
-        text += (
-            f"{match['home_team']} "
-            f"{match['home_score']}:{match['away_score']} "
-            f"{match['away_team']}\n\n"
-        )
+        text += f"{m['home_team']} {m['home_score']}:{m['away_score']} {m['away_team']}\n"
 
     await callback.message.answer(text)
