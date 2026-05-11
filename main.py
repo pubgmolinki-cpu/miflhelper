@@ -11,6 +11,7 @@ from webserver import run_web
 from handlers.start import router as start_router
 from handlers.menu import router as menu_router
 from handlers.upload import router as upload_router
+from handlers.admin import router as admin_router
 
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
@@ -18,6 +19,7 @@ dp = Dispatcher()
 dp.include_router(start_router)
 dp.include_router(menu_router)
 dp.include_router(upload_router)
+dp.include_router(admin_router)
 
 
 async def main():
