@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 
 from keyboards import leagues_keyboard, tours_keyboard
 from database import get_matches
